@@ -51,9 +51,32 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Method override middleware to use other HTTP methods such as PUT and DELETE
 app.use(methodOverride('_method'));
 
+// Bring in database connection
+const vidjotDB = require('./config/DBConnection');
+// Connects to MySQL database
+vidjotDB.setUpDB(false); // To set up database with new tables set (true)
+const MySQLStore = require('express-mysql-session');
+const db = require('./config/db'); // db.js config file
 // Enables session to be stored using browser's Cookie ID
 app.use(cookieParser());
-
+// Express session middleware - uses MySQL to store session
+app.use(session({
+	key: 'vidjot_session',
+	secret: 'tojiv',
+	store: new MySQLStore({
+	host: db.host,
+	port: 3306,
+	user: db.username,
+	password: db.password,
+	database: db.database,
+	clearExpired: true,
+	// How frequently expired sessions will be cleared; milliseconds:
+	checkExpirationInterval: 900000,
+	// The maximum age of a valid session; milliseconds:
+	expiration: 900000,
+	}),
+	resave: false,
+	saveUninitialized: false,}));
 // To store session information. By default it is stored as a cookie on browser
 app.use(session({
 	key: 'vidjot_session',
@@ -70,6 +93,7 @@ app.use(FlashMessenger.middleware);
 app.use(function (req, res, next) {
 	next();
 });
+
 
 // Use Routes
 /*
@@ -93,3 +117,4 @@ app.listen(port, () => {
 
 //hello
 //hope this works??
+//hello workd!

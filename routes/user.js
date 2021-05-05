@@ -1,39 +1,55 @@
 const express = require('express');
 const router = express.Router();
 const alertMessage = require('../helpers/messenger');
+const User = require('../models/User');
+
+
 
 // User register URL using HTTP post => /user/register
 router.post('/register', (req, res) => {
-    let errors = []
-    let success_msg = '';
-    // Do exercise 3 here
-    // if (req.body.password != password){
-    //     errors = errors.concat({text: "Password do not match"});
-    // }
+    let errors = [];
+    // Retrieves fields from register page from request body
     let { name, email, password, password2 } = req.body;
-    let success = true;
-
+    // Checks if both passwords entered are the same
+    if (password !== password2) {
+        errors.push({ text: 'Passwords do not match' });
+    }
+    // Checks that password length is more than 4
     if (password.length < 4) {
-        let msg = "Password must be at least 4 characters"
-        alertMessage(res, 'danger',
-            msg, 'fas fa-exclamation-circle', false);
-        success = false;
+        errors.push({ text: 'Password must be at least 4 characters' });
     }
-
-    if (password != password2) {
-        let msg = "Password do not match";
-        alertMessage(res, 'danger',
-            msg, 'fas fa-exclamation-circle', false);
-        success = false;
-    }
-
-    if (success) {
-        let msg = email
-        alertMessage(res, 'success', msg, 'fas fa-sign-in-alt', true);
-        res.redirect('/showLogin');
-    }
-    else {
-        res.render('user/register', { name, email });
+    if (errors.length > 0) {
+        res.render('user/register', {
+            errors,
+            name,
+            email,
+            password,
+            password2
+        });
+    } else {
+        // If all is well, checks if user is already registered
+        User.findOne({ where: { email: req.body.email } })
+            .then(user => {
+                if (user) {
+                    // If user is found, that means email has already been
+                    // registered
+                    res.render('user/register', {
+                        error: user.email + ' already registered',
+                        name,
+                        email,
+                        password,
+                        password2
+                    });
+                } else {
+                    // Create new user record
+                    User.create({ name, email, password })
+                        .then(user => {
+                            alertMessage(res, 'success', user.name + ' added.Please login', 'fas fa - sign -in -alt', true);
+                            res.redirect('/showLogin');
+                        })
+                        .catch(err => console.log(err));
+                }
+            });
     }
 
 });
